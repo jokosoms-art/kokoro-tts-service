@@ -11,6 +11,8 @@ tts = Kokoro(
     "voices-v1.0.bin"
 )
 
+print("AVAILABLE VOICES:", tts.voices)
+
 @app.get("/")
 def health():
     return {"status": "ok"}
@@ -19,15 +21,14 @@ def health():
 async def generate(request: Request):
 
     data = await request.json()
+
     text = data.get("text", "")
+    voice = data.get("voice", "af")
 
-    if not text:
-        return {"error": "text is required"}
+    if voice not in tts.voices:
+        voice = tts.voices[0]
 
-    audio, sr = tts.create(
-        text,
-        voice="am"   # ← WAJIB
-    )
+    audio, sr = tts.create(text, voice=voice)
 
     buf = io.BytesIO()
     sf.write(buf, audio, sr, format="WAV")
