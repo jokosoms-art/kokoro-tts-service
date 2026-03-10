@@ -4,23 +4,35 @@ from kokoro_onnx import Kokoro
 import io
 import soundfile as sf
 import traceback
+import os
+
+# ==========================================
+# MEMORY OPTIMIZATION (important for Render)
+# ==========================================
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OMP_WAIT_POLICY"] = "PASSIVE"
+os.environ["ORT_DISABLE_MEMORY_ARENA"] = "1"
 
 app = FastAPI()
 
 print("Loading Kokoro model...")
 
-# IMPORTANT: do not use providers parameter (not supported in your version)
+# ==========================================
+# LOAD QUANTIZED MODEL (IMPORTANT)
+# ==========================================
+
 tts = Kokoro(
-    "kokoro-v1.0.onnx",
+    "kokoro-int8.onnx",
     "voices-v1.0.bin"
 )
 
 print("Model ready")
 print("AVAILABLE VOICES:", list(tts.voices.keys()))
 
-# ----------------------------------------------------
-# Warmup model to avoid slow first request
-# ----------------------------------------------------
+# ==========================================
+# WARMUP
+# ==========================================
 
 print("Warming up Kokoro...")
 
@@ -30,17 +42,17 @@ try:
 except Exception as e:
     print("Warmup error:", e)
 
-# ----------------------------------------------------
-# Health check
-# ----------------------------------------------------
+# ==========================================
+# HEALTH CHECK
+# ==========================================
 
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-# ----------------------------------------------------
-# TTS endpoint
-# ----------------------------------------------------
+# ==========================================
+# TTS ENDPOINT
+# ==========================================
 
 @app.post("/tts")
 async def generate(request: Request):
@@ -67,7 +79,6 @@ async def generate(request: Request):
                 status_code=400
             )
 
-        # prevent extremely long inference
         if len(text) > 300:
             text = text[:300]
 
