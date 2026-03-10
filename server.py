@@ -23,7 +23,7 @@ print("Loading Kokoro model...")
 # ==========================================
 
 tts = Kokoro(
-    "kokoro-int8.onnx",
+    "kokoro-v1.0.onnx",
     "voices-v1.0.bin"
 )
 
