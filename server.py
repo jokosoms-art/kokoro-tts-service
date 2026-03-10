@@ -6,12 +6,19 @@ import soundfile as sf
 
 app = FastAPI()
 
-tts = Kokoro("kokoro-v1.0.onnx")
+tts = Kokoro(
+    "kokoro-v1.0.onnx",
+    "voices-v1.0.bin"
+)
+
+@app.get("/")
+def health():
+    return {"status": "ok"}
 
 @app.post("/tts")
 async def generate(data: dict):
 
-    text = data["text"]
+    text = data.get("text","")
 
     audio, sr = tts.create(text)
 
