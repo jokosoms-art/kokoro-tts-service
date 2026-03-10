@@ -9,41 +9,44 @@ app = FastAPI()
 
 print("Loading Kokoro model...")
 
-# Force CPU provider to avoid GPU detection delay
+# IMPORTANT: do not use providers parameter (not supported in your version)
 tts = Kokoro(
     "kokoro-v1.0.onnx",
-    "voices-v1.0.bin",
-    providers=["CPUExecutionProvider"]
+    "voices-v1.0.bin"
 )
 
 print("Model ready")
 print("AVAILABLE VOICES:", list(tts.voices.keys()))
 
-# ---------------------------------------------------
-# Warmup model to avoid first-request latency
-# ---------------------------------------------------
-print("Warming up model...")
+# ----------------------------------------------------
+# Warmup model to avoid slow first request
+# ----------------------------------------------------
+
+print("Warming up Kokoro...")
 
 try:
     tts.create("hello world", voice="af_bella")
     print("Warmup complete")
 except Exception as e:
-    print("Warmup failed:", e)
+    print("Warmup error:", e)
 
-# ---------------------------------------------------
+# ----------------------------------------------------
 # Health check
-# ---------------------------------------------------
+# ----------------------------------------------------
+
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-# ---------------------------------------------------
-# TTS Endpoint
-# ---------------------------------------------------
+# ----------------------------------------------------
+# TTS endpoint
+# ----------------------------------------------------
+
 @app.post("/tts")
 async def generate(request: Request):
 
     try:
+
         data = await request.json()
 
         text = data.get("text")
@@ -55,10 +58,6 @@ async def generate(request: Request):
                 status_code=400
             )
 
-        # limit text length (avoid long inference)
-        if len(text) > 300:
-            text = text[:300]
-
         if voice not in tts.voices:
             return JSONResponse(
                 {
@@ -68,14 +67,18 @@ async def generate(request: Request):
                 status_code=400
             )
 
-        print(f"TTS request | voice={voice} | text_length={len(text)}")
+        # prevent extremely long inference
+        if len(text) > 300:
+            text = text[:300]
+
+        print(f"TTS request | voice={voice} | length={len(text)}")
 
         audio, sr = tts.create(text, voice=voice)
 
         buf = io.BytesIO()
         sf.write(buf, audio, sr, format="WAV")
 
-        print("TTS generation success")
+        print("TTS success")
 
         return Response(
             buf.getvalue(),
@@ -84,7 +87,7 @@ async def generate(request: Request):
 
     except Exception as e:
 
-        print("TTS ERROR:")
+        print("TTS ERROR")
         traceback.print_exc()
 
         return JSONResponse(
