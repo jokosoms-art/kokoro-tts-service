@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from kokoro_onnx import Kokoro
 from fastapi.responses import Response
 import io
@@ -16,11 +16,18 @@ def health():
     return {"status": "ok"}
 
 @app.post("/tts")
-async def generate(data: dict):
+async def generate(request: Request):
 
-    text = data.get("text","")
+    data = await request.json()
+    text = data.get("text", "")
 
-    audio, sr = tts.create(text)
+    if not text:
+        return {"error": "text is required"}
+
+    audio, sr = tts.create(
+        text,
+        voice="am"   # ← WAJIB
+    )
 
     buf = io.BytesIO()
     sf.write(buf, audio, sr, format="WAV")
